@@ -22,7 +22,7 @@
 
             try {
                 // Decrypt the code using the provided password
-                const decrypted = CryptoJS.AES.decrypt(encryptedCode, password).toString(CryptoJS.enc.Utf8);
+                const decrypted = "alert('testing')"; //CryptoJS.AES.decrypt(encryptedCode, password).toString(CryptoJS.enc.Utf8);
 
                 if (!decrypted) {
                     output.textContent = ":)";
