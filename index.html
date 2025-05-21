@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Cool Website</title>
-    <!-- Include CryptoJS library for AES encryption/decryption -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 </head>
 <body>
     <h1>Welcome to my website! ⭐️</h1>
@@ -14,33 +12,120 @@
     <p id="output"></p>
 
     <script>
-        const encryptedCode = "U2FsdGVkX18z4y9X7z3Q8z4z4z4z4z4z4z4z4z4z4z4z4z4z4z4z4z4z4z4z4z4z";
+        // Encrypted JavaScript code and IV (base64-encoded)
+        // Example: Encrypted "alert('Decrypted code is running!');" with password "mySecretPassword"
+        const encrypted = encryptCode("alert('Decrypted code is running!');", "pass");
 
-        function decryptAndRun() {
+        // Convert base64 to ArrayBuffer
+        function base64ToArrayBuffer(base64) {
+            const binary = atob(base64);
+            const len = binary.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binary.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        // Convert string to ArrayBuffer
+        function stringToArrayBuffer(str) {
+            return new TextEncoder().encode(str).buffer;
+        }
+
+        // Derive key from password using PBKDF2
+        async function deriveKey(password, salt) {
+            const keyMaterial = await window.crypto.subtle.importKey(
+                "raw",
+                stringToArrayBuffer(password),
+                { name: "PBKDF2" },
+                false,
+                ["deriveBits", "deriveKey"]
+            );
+            return window.crypto.subtle.deriveKey(
+                {
+                    name: "PBKDF2",
+                    salt: salt,
+                    iterations: 100000,
+                    hash: "SHA-256"
+                },
+                keyMaterial,
+                { name: "AES-GCM", length: 256 },
+                true,
+                ["decrypt"]
+            );
+        }
+
+        async function encryptCode(code, password) {
+            const iv = window.crypto.getRandomValues(new Uint8Array(12)); // 12-byte IV for AES-GCM
+            const salt = window.crypto.getRandomValues(new Uint8Array(16)); // Salt for PBKDF2
+            const keyMaterial = await window.crypto.subtle.importKey(
+                "raw",
+                new TextEncoder().encode(password),
+                { name: "PBKDF2" },
+                false,
+                ["deriveBits", "deriveKey"]
+            );
+            const key = await window.crypto.subtle.deriveKey(
+                {
+                    name: "PBKDF2",
+                    salt: salt,
+                    iterations: 100000,
+                    hash: "SHA-256"
+                },
+                keyMaterial,
+                { name: "AES-GCM", length: 256 },
+                true,
+                ["encrypt"]
+            );
+            const encrypted = await window.crypto.subtle.encrypt(
+                { name: "AES-GCM", iv: iv },
+                key,
+                new TextEncoder().encode(code)
+            );
+            // Convert to base64
+
+            return {
+                encryptedBase64: btoa(String.fromCharCode(...new Uint8Array(encrypted))),
+                ivBase64: btoa(String.fromCharCode(...iv)),
+                saltBase64: btoa(String.fromCharCode(...salt))
+            }
+        }
+        
+        // Decrypt and run code
+        async function decryptAndRun({ encryptedBase64: "", ivBase64: "", saltBase64: ""})
+            }) {
             const password = document.getElementById('passwordInput').value;
             const output = document.getElementById('output');
 
             try {
-                // Decrypt the code using the provided password
-                const decrypted = "alert('testing')"; //CryptoJS.AES.decrypt(encryptedCode, password).toString(CryptoJS.enc.Utf8);
+                const encryptedData = base64ToArrayBuffer(encryptedBase64);
+                const iv = base64ToArrayBuffer(ivBase64);
+                const salt = base64ToArrayBuffer(saltBase64);
 
-                if (!decrypted) {
-                    output.textContent = ":)";
-                    return;
-                }
+                const key = await deriveKey(password, salt);
 
-                eval(decrypted);
-                output.textContent = ":)";
+                // Decrypt
+                const decrypted = await window.crypto.subtle.decrypt(
+                    { name: "AES-GCM", iv: iv },
+                    key,
+                    encryptedData
+                );
+
+                const decryptedCode = new TextDecoder().decode(decrypted);
+
+                eval(decryptedCode);
+                output.textContent = "I know your secret :)";
             } catch (error) {
-                output.textContent = ":).";
+                output.textContent = "I know your secret :).";
             }
         }
 
+        // Add event listener for Enter key press
         document.getElementById('passwordInput').addEventListener('keypress', function(event) {
             if (event.key === 'Enter') {
-                decryptAndRun();
+                decryptAndRun(encrypted);
             }
-        });        
+        });
     </script>
 </body>
 </html>
