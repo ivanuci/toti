@@ -12,7 +12,7 @@
     <p id="output"></p>
 
     <script>
-        const encrypted = encryptCode("alert('Decrypted code is running!');", "pass");
+        const encryptedMain = await encryptCode("alert('Decrypted code is running!');", "pass");
         console.log(encrypted)
 
         // Convert base64 to ArrayBuffer
@@ -127,7 +127,7 @@
         // Add event listener for Enter key press
         document.getElementById('passwordInput').addEventListener('keypress', function(event) {
             if (event.key === 'Enter') {
-                decryptAndRun(encrypted);
+                decryptAndRun(encryptedMain);
             }
         });
     </script>
