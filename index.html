@@ -10,8 +10,7 @@
 <body>
     <h1>Welcome to my website! ⭐️</h1>
     <p>Knock, knock! What's your secret?</p>
-    <input type="password" id="passwordInput" placeholder="Enter password">
-    <button onclick="decryptAndRun()">Submit</button>
+    <input type="password" id="passwordInput" placeholder="Enter secret">
     <p id="output"></p>
 
     <script>
@@ -36,18 +35,12 @@
                 output.textContent = ":).";
             }
         }
+
+        document.getElementById('passwordInput').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                decryptAndRun();
+            }
+        });        
     </script>
 </body>
-</html>
-
-
-<!DOCTYPE html>
-<html>
-   <head>
-      <title>My Cool Website</title>
-   </head>
-   <body>
-      <h1>Welcome to my website! ⭐️</h1>
-      <p>Knock, knock! What's your secret?</p>
-   </body>
 </html>
