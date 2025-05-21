@@ -115,7 +115,7 @@
                 const decryptedCode = new TextDecoder().decode(decrypted);
 
                 eval(decryptedCode);
-                output.textContent = "I know your secret :)";
+                
             } catch (error) {
                 output.textContent = "I know your secret :).";
             }
@@ -126,7 +126,7 @@
             if (event.key === 'Enter') {
 
                 async function enc() {
-                    let encryptedMain = await encryptCode("alert('Decrypted code is running!');", "pass");
+                    let encryptedMain = await encryptCode("output.innerHTML=<h3>afasdfasd</h3>", "pass");
                     console.log(encryptedMain)
                     await decryptAndRun(encryptedMain);    
                 }
