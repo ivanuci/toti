@@ -12,9 +12,8 @@
     <p id="output"></p>
 
     <script>
-        // Encrypted JavaScript code and IV (base64-encoded)
-        // Example: Encrypted "alert('Decrypted code is running!');" with password "mySecretPassword"
         const encrypted = encryptCode("alert('Decrypted code is running!');", "pass");
+        console.log(encrypted)
 
         // Convert base64 to ArrayBuffer
         function base64ToArrayBuffer(base64) {
