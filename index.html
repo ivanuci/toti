@@ -1,10 +1,53 @@
 <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Cool Website</title>
+    <!-- Include CryptoJS library for AES encryption/decryption -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+</head>
+<body>
+    <h1>Welcome to my website! ⭐️</h1>
+    <p>Knock, knock! What's your secret?</p>
+    <input type="password" id="passwordInput" placeholder="Enter password">
+    <button onclick="decryptAndRun()">Submit</button>
+    <p id="output"></p>
+
+    <script>
+        const encryptedCode = "U2FsdGVkX18z4y9X7z3Q8z4z4z4z4z4z4z4z4z4z4z4z4z4z4z4z4z4z4z4z4z4z";
+
+        function decryptAndRun() {
+            const password = document.getElementById('passwordInput').value;
+            const output = document.getElementById('output');
+
+            try {
+                // Decrypt the code using the provided password
+                const decrypted = CryptoJS.AES.decrypt(encryptedCode, password).toString(CryptoJS.enc.Utf8);
+
+                if (!decrypted) {
+                    output.textContent = ":)";
+                    return;
+                }
+
+                eval(decrypted);
+                output.textContent = ":)";
+            } catch (error) {
+                output.textContent = ":).";
+            }
+        }
+    </script>
+</body>
+</html>
+
+
+<!DOCTYPE html>
 <html>
    <head>
       <title>My Cool Website</title>
    </head>
    <body>
       <h1>Welcome to my website! ⭐️</h1>
-      <p>How was your day? 🎉</p>
+      <p>Knock, knock! What's your secret?</p>
    </body>
 </html>
