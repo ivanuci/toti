@@ -126,7 +126,7 @@
             if (event.key === 'Enter') {
 
                 async function enc() {
-                    let encryptedMain = await encryptCode("output.innerHTML=<h3>afasdfasd</h3>", "pass");
+                    let encryptedMain = await encryptCode("output.innerHTML='<h3>afasdfasd</h3>';", "pass");
                     console.log(encryptedMain)
                     await decryptAndRun(encryptedMain);    
                 }
