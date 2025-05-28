@@ -34,7 +34,9 @@ class Totp {
         this.init();
     }
 
-    init() {
+    async init() {
+
+        this.timeOffset = await this.syncTimeOffset();
 
         this.filter.addEventListener('input', (e) => {
             const term = e.target.value.trim().toLowerCase();
@@ -62,7 +64,6 @@ class Totp {
         this.overlay.addEventListener('click', hideOverlay);
         window.addEventListener('keydown', hideOverlay);
 
-        //setInterval(this.updateTOTPs.bind(this), 500);
         setInterval(() => this.updateTOTPs(), 500);
     }
 
@@ -94,6 +95,20 @@ class Totp {
         }
         return new Uint8Array(bytes);
     }
+
+    async syncTimeOffset() {
+        try {
+            const res = await fetch("https://worldtimeapi.org/api/timezone/Etc/UTC");
+            if (!res.ok) throw new Error(`HTTP error: ${res.status}`);
+            const data = await res.json();
+            const serverTime = new Date(data.utc_datetime).getTime();
+            const localTime = Date.now();
+            return serverTime - localTime;
+        } catch (err) {
+            console.error("Failed to sync time:", err.message);
+            return 0;
+        }
+    }   
 
     async getTOTP(secret, time, algorithm, digits, period) {
         
@@ -194,7 +209,8 @@ class Totp {
 
     async updateTOTPs(force = false) {
 
-        const now = Math.floor(Date.now() / 1000);
+        let now = this.timeOffset ? Date.now() + this.timeOffset : Date.now();
+        now = Math.floor(now / 1000);
 
         if (this.filteredData) for (const entry of this.filteredData) {
 
