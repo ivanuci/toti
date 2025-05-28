@@ -1,6 +1,3 @@
-const overlay = document.getElementById('overlay');
-const qrcodeContainer = document.getElementById('qrcode');
-
 class Totp {
 
     constructor(parent, data) {
