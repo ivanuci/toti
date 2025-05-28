@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Encode Text</title>
+    <script src="https://cdn.jsdelivr.net/npm/argon2-browser@1.18.0/dist/argon2-bundled.min.js"></script>
+    <script src="encoder.js"></script>
+    <script>
+        async function encryptText() {
+            const encoder = new Encoder();
+            const text = document.getElementById("inputText").value;
+            const password = document.getElementById("password").value;
+            const encrypted = await encoder.encryptText(text, password);
+
+            try {
+                await navigator.clipboard.writeText(encrypted);
+                location.reload();
+            } catch (err) {
+                console.error("Failed to copy to clipboard:", err);
+                alert("Failed to copy to clipboard.");
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>Encrypt Text</h1>
+    <textarea id="inputText" rows="10" cols="50" placeholder="Enter text here..."></textarea><br>
+    <input type="password" id="password" placeholder="Enter password" onkeypress="if(event.key === 'Enter') encryptText()"><br>
+</body>
+</html>

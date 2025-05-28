@@ -1,0 +1,93 @@
+.entry-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    background: white;
+    padding: 1em;
+    margin-bottom: 1em;
+    border-radius: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.entry-left {
+    flex: 1;
+    min-width: 200px;
+    text-align: left;
+}
+
+.entry-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+}
+
+.issuer {
+    font-weight: bold;
+    font-size: 1.2em;
+}
+.account {
+    color: #666;
+    font-size: 0.9em;
+}
+.code {
+    display: inline-block;
+    font-size: 2em;
+    margin-top: 0.5em;
+    letter-spacing: 2px;
+    text-align: right;
+    cursor: pointer; /* 👈 This makes the hand appear */
+    user-select: none;
+    transition: opacity 0.2s ease;
+}
+.circle {
+    display: inline-block;
+}
+circle.background {
+    fill: none;
+    stroke: #eee;
+    stroke-width: 4;
+}
+circle.progress {
+    fill: none;
+    stroke: #00c853;
+    stroke-width: 4;
+    transform: rotate(-90deg);
+    transform-origin: center;
+    transition: stroke-dashoffset 0.5s linear;
+}
+
+.filter-box {
+    width: 90%;
+    padding: 0.5em;
+    margin-bottom: 1em;
+    font-size: 1em;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+
+/*QR Code*/
+.qrTrigger {
+    text-align: center;
+    cursor: pointer;
+}
+
+#overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+#qrPopup {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+}

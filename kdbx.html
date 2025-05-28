@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KDBX Decryptor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #dropZone {
+            border: 2px dashed #ccc;
+            border-radius: 5px;
+            padding: 25px;
+            text-align: center;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+        }
+        #dropZone.highlight {
+            border-color: #4CAF50;
+            background-color: #e8f5e9;
+        }
+        #password {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+        }
+        #status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+        #progress {
+            width: 100%;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>KeePass KDBX Decryptor</h1>
+    
+    <div id="dropZone">
+        Drag & drop your KeePass .kdbx file here
+    </div>
+    
+    <input type="password" id="password" placeholder="Knock knock! What is your secret?" />
+    <progress id="progress" value="0" max="100" style="display: none;"></progress>
+    
+    <div id="status"></div>
+
+    <!-- Load required scripts in correct order -->
+    <script src="argon2-bundled.min.js"></script>
+    <script src="kdbxweb.min.js"></script>
+    
+    <script>
+        // Initialize crypto engine with Argon2 support
+        document.addEventListener('DOMContentLoaded', async () => {
+            
+            // Inject Argon2 support into kdbxweb
+            kdbxweb.CryptoEngine.setArgon2Impl((password, salt, memory, iterations, length, parallelism, type, version) => {
+                return argon2.hash({
+                    pass: new Uint8Array(password),
+                    salt: new Uint8Array(salt),
+                    time: iterations,
+                    mem: memory,
+                    hashLen: length,
+                    parallelism: parallelism,
+                    type: type, // 2 = argon2.ArgonType.Argon2id
+                    version: version // 0x13 for KDBX4
+                })
+                .then(res => new Uint8Array(res.hash))
+                .catch(err => {
+                    console.log(err.code, err.message)
+                })
+            });     
+            
+            console.log("Crypto engine initialized with Argon2 support");
+        });
+
+        // File handling
+        const dropZone = document.getElementById('dropZone');
+        const passwordInput = document.getElementById('password');
+        const statusDiv = document.getElementById('status');
+        const progressBar = document.getElementById('progress');
+        
+        let kdbxFile = null;
+        
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        // Highlight drop zone when item is dragged over it
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+        
+        function highlight() {
+            dropZone.classList.add('highlight');
+        }
+        
+        function unhighlight() {
+            dropZone.classList.remove('highlight');
+        }
+        
+        // Handle dropped files
+        dropZone.addEventListener('drop', handleDrop, false);
+        
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.name.endsWith('.kdbx')) {
+                    kdbxFile = file;
+                    dropZone.textContent = `File ready: ${file.name}`;
+                    statusDiv.textContent = 'File loaded. Enter password and press Enter.';
+                    statusDiv.className = 'success';
+                } else {
+                    statusDiv.textContent = 'Please drop a .kdbx file';
+                    statusDiv.className = 'error';
+                }
+            }
+        }    
+        
+        // Handle password entry
+        passwordInput.addEventListener('keypress', async function(e) {
+            if (e.key === 'Enter') {
+                if (!kdbxFile) {
+                    statusDiv.textContent = 'Please drop a .kdbx file first';
+                    statusDiv.className = 'error';
+                    return;
+                }
+                
+                const password = passwordInput.value;
+                passwordInput.value = "";
+                if (!password) {
+                    statusDiv.textContent = 'Please enter a password';
+                    statusDiv.className = 'error';
+                    return;
+                }
+                
+                try {
+                    statusDiv.textContent = 'Decrypting... (this may take a moment)';
+                    statusDiv.className = '';
+                    progressBar.style.display = 'block';
+                    progressBar.value = 10;
+                    
+                    const arrayBuffer = await readFileAsArrayBuffer(kdbxFile);
+                    progressBar.value = 30;
+                    
+                    const db = await decryptKdbx(arrayBuffer, password);
+                    progressBar.value = 100;
+                    
+                    statusDiv.textContent = 'Decryption successful! Check console for entries.';
+                    statusDiv.className = 'success';
+                    
+                    // Display basic info in the page
+                    displayBasicInfo(db);
+                    
+                } catch (err) {
+                    console.error('Decryption failed:', err);
+                    statusDiv.textContent = 'Decryption failed. Wrong password or corrupt file.';
+                    statusDiv.className = 'error';
+                } finally {
+                    setTimeout(() => {
+                        progressBar.style.display = 'none';
+                        progressBar.value = 0;
+                    }, 1000);
+                }
+            }
+        });
+        
+        // Helper function to read file as ArrayBuffer
+        function readFileAsArrayBuffer(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        }
+        
+        // Decrypt KDBX file
+        async function decryptKdbx(arrayBuffer, password) {
+            const credentials = new kdbxweb.Credentials(
+                kdbxweb.ProtectedValue.fromString(password)
+            );
+            
+            const db = await kdbxweb.Kdbx.load(arrayBuffer, credentials);
+            return db;
+        }
+        
+        // Display basic info on the page
+        function displayBasicInfo(db) {
+            const info = document.createElement('div');
+            info.innerHTML = `
+                <h3>Database Info</h3>
+                <p><strong>Name:</strong> ${db.name || 'Untitled'}</p>
+                <p><strong>Description:</strong> ${db.description || 'No description'}</p>
+                <p><strong>Version:</strong> ${db.versionMajor}.${db.versionMinor}</p>
+                <p><strong>Entries:</strong> ${countEntries(db.getDefaultGroup())}</p>
+            `;
+            statusDiv.appendChild(info);
+        }
+        
+        // Count all entries recursively
+        function countEntries(group) {
+            let count = group.entries.length;
+            group.groups.forEach(subGroup => {
+                count += countEntries(subGroup);
+            });
+            return count;
+        }
+    </script>
+</body>
+</html>

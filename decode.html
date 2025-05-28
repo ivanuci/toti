@@ -1,0 +1,30 @@
+<!-- decode.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Decode Text</title>
+    <script src="https://cdn.jsdelivr.net/npm/argon2-browser@1.18.0/dist/argon2-bundled.min.js"></script>
+    <script src="encoder.js"></script>    
+    <script>
+        async function decryptText() {
+            const encoder = new Encoder();
+            const encodedText = document.getElementById("inputText").value;
+            const password = document.getElementById("password").value;
+            const decoded = await encoder.decryptText(encodedText, password);
+
+            try {
+                await navigator.clipboard.writeText(decoded);
+                location.reload();
+            } catch (err) {
+                console.error("Failed to copy to clipboard:", err);
+                alert("Failed to copy to clipboard.");
+            }            
+        }
+    </script>
+</head>
+<body>
+    <h1>Decrypt Text</h1>
+    <textarea id="inputText" rows="10" cols="50" placeholder="Paste encrypted text here..."></textarea><br>
+    <input type="password" id="password" placeholder="Enter password" onkeypress="if(event.key === 'Enter') decryptText()"><br>
+</body>
+</html>

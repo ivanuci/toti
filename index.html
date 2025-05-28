@@ -2,138 +2,196 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Cool Website</title>
+
+    <style>
+        body {
+            font-family: sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            padding: 2em;
+            max-width: 600px;
+            margin: auto;
+        }
+
+        #dropZone {
+            border: 2px dashed #ccc;
+            border-radius: 5px;
+            padding: 25px;
+            text-align: center;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+        }
+        #dropZone.highlight {
+            border-color: #4CAF50;
+            background-color: #e8f5e9;
+        }
+        #password {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+        }
+    </style>
+
+    <link href="totp.css" rel="stylesheet">
+    <script src="totp.js"></script>
 </head>
 <body>
-    <h1>Welcome to my website! ⭐️</h1>
-    <p>Knock, knock! What's your secret?</p>
-    <input type="password" id="passwordInput" placeholder="Enter secret">
-    <p id="output"></p>
+
+    <div id="output">
+        <div id="dropZone">
+            <h1>Welcome to my website! ⭐️</h1>
+            <input type="password" id="password" placeholder="Knock, knock! What's your secret?" autofocus>
+        </div>
+    </div>
+
+    <script src="argon2-bundled.min.js"></script>
+    <script src="encoder.js"></script>
+    <script src="kdbxweb.min.js"></script>
+    <script src="qrcode.min.js"></script>
 
     <script>
-        // Convert base64 to ArrayBuffer
-        function base64ToArrayBuffer(base64) {
-            const binary = atob(base64);
-            const len = binary.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binary.charCodeAt(i);
-            }
-            return bytes.buffer;
-        }
-
-        // Convert string to ArrayBuffer
-        function stringToArrayBuffer(str) {
-            return new TextEncoder().encode(str).buffer;
-        }
-
-        // Derive key from password using PBKDF2
-        async function deriveKey(password, salt) {
-            const keyMaterial = await window.crypto.subtle.importKey(
-                "raw",
-                stringToArrayBuffer(password),
-                { name: "PBKDF2" },
-                false,
-                ["deriveBits", "deriveKey"]
-            );
-            return window.crypto.subtle.deriveKey(
-                {
-                    name: "PBKDF2",
-                    salt: salt,
-                    iterations: 100000,
-                    hash: "SHA-256"
-                },
-                keyMaterial,
-                { name: "AES-GCM", length: 256 },
-                true,
-                ["decrypt"]
-            );
-        }
-
-        async function encryptCode(code, password) {
-            const iv = window.crypto.getRandomValues(new Uint8Array(12)); // 12-byte IV for AES-GCM
-            const salt = window.crypto.getRandomValues(new Uint8Array(16)); // Salt for PBKDF2
-            const keyMaterial = await window.crypto.subtle.importKey(
-                "raw",
-                new TextEncoder().encode(password),
-                { name: "PBKDF2" },
-                false,
-                ["deriveBits", "deriveKey"]
-            );
-            const key = await window.crypto.subtle.deriveKey(
-                {
-                    name: "PBKDF2",
-                    salt: salt,
-                    iterations: 100000,
-                    hash: "SHA-256"
-                },
-                keyMaterial,
-                { name: "AES-GCM", length: 256 },
-                true,
-                ["encrypt"]
-            );
-            const encrypted = await window.crypto.subtle.encrypt(
-                { name: "AES-GCM", iv: iv },
-                key,
-                new TextEncoder().encode(code)
-            );
-            // Convert to base64
-
-            return {
-                encryptedBase64: btoa(String.fromCharCode(...new Uint8Array(encrypted))),
-                ivBase64: btoa(String.fromCharCode(...iv)),
-                saltBase64: btoa(String.fromCharCode(...salt))
-            }
-        }
-        
-        // Decrypt and run code
-        async function decryptAndRun({ encryptedBase64= "", ivBase64= "", saltBase64= "" }) {
-            const password = document.getElementById('passwordInput').value;
-            const output = document.getElementById('output');
-
-            try {
-
-                // Validate inputs
-                if (!encryptedBase64 || !ivBase64 || !saltBase64) {
-                    throw new Error("Missing encryption data");
-                }
-                
-                const encryptedData = base64ToArrayBuffer(encryptedBase64);
-                const iv = base64ToArrayBuffer(ivBase64);
-                const salt = base64ToArrayBuffer(saltBase64);
-
-                const key = await deriveKey(password, salt);
-
-                // Decrypt
-                const decrypted = await window.crypto.subtle.decrypt(
-                    { name: "AES-GCM", iv: iv },
-                    key,
-                    encryptedData
-                );
-
-                const decryptedCode = new TextDecoder().decode(decrypted);
-
-                eval(decryptedCode);
-                
-            } catch (error) {
-                output.textContent = "I know your secret :).";
-            }
-        }
-
-        // Add event listener for Enter key press
-        document.getElementById('passwordInput').addEventListener('keypress', function(event) {
-            if (event.key === 'Enter') {
-
-                async function enc() {
-                    let encryptedMain = await encryptCode("output.innerHTML='<h3>afasdfasd</h3>';", "pass");
-                    console.log(encryptedMain)
-                    await decryptAndRun(encryptedMain);    
-                }
-                enc();
-                
-            }
+        // Initialize crypto engine with Argon2 support
+        document.addEventListener('DOMContentLoaded', async () => {
+            
+            // Inject Argon2 support into kdbxweb
+            kdbxweb.CryptoEngine.setArgon2Impl((password, salt, memory, iterations, length, parallelism, type, version) => {
+                return argon2.hash({
+                    pass: new Uint8Array(password),
+                    salt: new Uint8Array(salt),
+                    time: iterations,
+                    mem: memory,
+                    hashLen: length,
+                    parallelism: parallelism,
+                    type: type, // 2 = argon2.ArgonType.Argon2id
+                    version: version // 0x13 for KDBX4
+                })
+                .then(res => new Uint8Array(res.hash))
+                .catch(err => {
+                    console.log(err.code, err.message)
+                })
+            });     
+            
+            console.log("Crypto engine initialized with Argon2 support");
         });
     </script>
+
+    <script>
+        const encodedText = "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";
+        const encoder = new Encoder();
+        const output = document.getElementById('output');
+        const dropZone = document.getElementById('dropZone');
+        let kdbxFile = null;
+
+        // Helper function to read file as ArrayBuffer
+        function readFileAsArrayBuffer(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        }
+        
+        // Decrypt KDBX file
+        async function decryptKdbx(arrayBuffer, password) {
+            const credentials = new kdbxweb.Credentials(
+                kdbxweb.ProtectedValue.fromString(password)
+            );
+            
+            const db = await kdbxweb.Kdbx.load(arrayBuffer, credentials);
+            return db;
+        }
+
+        document.getElementById('password').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+
+                const pass = event.target.value;
+                event.target.value = "";
+                
+                if (!pass) return;
+
+                output.innerHTML = "";
+
+                if (kdbxFile) {
+                    (async () => {
+                        try {                      
+                            const arrayBuffer = await readFileAsArrayBuffer(kdbxFile);
+                            const db = await decryptKdbx(arrayBuffer, pass);
+                            const group = db.getDefaultGroup()
+                            const data = group.entries.map(entry => {
+                                const title = entry.fields.get("Title");
+                                const user = entry.fields.get("UserName");
+                                const notes = JSON.parse(entry.fields.get("Notes"));
+                                let password = entry.fields.get("Password");
+                                if (password && password instanceof kdbxweb.ProtectedValue) password = password.getText();
+                                return {
+                                    "issuer" : title,
+                                    "account" : user,
+                                    "secret" : password,
+                                    "algorithm": notes.algorithm ? notes.algorithm : "SHA-256",
+                                    "digits": notes.digits ? notes.digits : 6,
+                                    "period": notes.period ? notes.period : 30
+                                }
+                            });
+                            new Totp(output, data);
+                        } catch (err) {
+                            console.error('Decryption failed:', err);
+                        }
+                    })();                    
+                }
+                else {
+                    (async () => {
+                        new Totp(output, JSON.parse(await encoder.decryptText(encodedText, pass)));
+                    })();
+                }
+            }
+        });
+
+       // Prevent default drag behaviors
+       function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+                
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+        
+        function highlight() {
+            dropZone.classList.add('highlight');
+        }
+        
+        function unhighlight() {
+            dropZone.classList.remove('highlight');
+        }
+        
+        // Handle dropped files
+        dropZone.addEventListener('drop', handleDrop, false);
+        
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.name.endsWith('.kdbx')) {
+                    kdbxFile = file;
+                    dropZone.classList.add('highlight');
+                }
+            }
+        }        
+    </script>
+
 </body>
 </html>
